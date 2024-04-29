@@ -120,7 +120,7 @@
 //! }
 //! ```
 //!
-//! **NOTE**: Although capturing the variables will mote them in, to ensure that the captured variables
+//! **NOTE**: Although capturing the variables will move them in, to ensure that the captured variables
 //! can be used multiple times after being expanded, what you actually get are mutable references to them.
 //!
 //! Let's go back to the original example:
