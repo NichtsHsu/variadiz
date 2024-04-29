@@ -42,4 +42,15 @@ print(
 );
 ```
 
+Outputs:
+
+```text
+0: Some("hello")
+1: Some([1, 2, 3])
+2: Some('e')
+[20240429] 0: None
+[20240429] 1: None
+[20240429] 2: None
+```
+
 Check the [documentation page](https://docs.rs/variadiz) for details.
