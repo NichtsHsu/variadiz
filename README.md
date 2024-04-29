@@ -1,6 +1,12 @@
-# Variadiz
+# variadiz
 
 Variadic function support for Rust.
+
+## Install
+
+```console
+cargo add tuplez variadiz
+```
 
 ## Example
 
