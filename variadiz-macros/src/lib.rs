@@ -33,9 +33,9 @@ fn replace_stmts(
     variadic_ident: &proc_macro2::Ident,
     variadic_generic_param: &Option<syn::Generics>,
     variadic_where_clause: &Option<syn::WhereClause>,
-    mapper_varidiac_arg: &syn::PatType,
-    mapper_varidiac_arg_ref: &syn::PatType,
-    mapper_varidiac_arg_mut: &syn::PatType,
+    mapper_variadic_arg: &syn::PatType,
+    mapper_variadic_arg_ref: &syn::PatType,
+    mapper_variadic_arg_mut: &syn::PatType,
 ) -> Vec<syn::Stmt> {
     stmts
     .into_iter()
@@ -130,7 +130,7 @@ fn replace_stmts(
                             impl #trait_impl_generics #trait_mapper_name #trait_ty_generics for
                             #struct_mapper_name #original_types #trait_where_clause
                             {
-                                fn map #variadic_generic_param (&mut self, #mapper_varidiac_arg)
+                                fn map #variadic_generic_param (&mut self, #mapper_variadic_arg)
                                 #variadic_where_clause
                                 {
                                     #unpack
@@ -147,7 +147,7 @@ fn replace_stmts(
                             impl #trait_impl_generics #trait_mapper_ref_name #trait_ty_generics for
                             #struct_mapper_name #original_types #trait_where_clause
                             {
-                                fn map_ref #variadic_generic_param (&mut self, #mapper_varidiac_arg_ref)
+                                fn map_ref #variadic_generic_param (&mut self, #mapper_variadic_arg_ref)
                                 #variadic_where_clause
                                 {
                                     #unpack
@@ -164,7 +164,7 @@ fn replace_stmts(
                             impl #trait_impl_generics #trait_mapper_mut_name #trait_ty_generics for
                             #struct_mapper_name #original_types #trait_where_clause
                             {
-                                fn map_mut #variadic_generic_param (&mut self, #mapper_varidiac_arg_mut)
+                                fn map_mut #variadic_generic_param (&mut self, #mapper_variadic_arg_mut)
                                 #variadic_where_clause
                                 {
                                     #unpack
@@ -190,9 +190,9 @@ fn replace_stmts(
                     variadic_ident,
                     variadic_generic_param,
                     variadic_where_clause,
-                    mapper_varidiac_arg,
-                    mapper_varidiac_arg_ref,
-                    mapper_varidiac_arg_mut,
+                    mapper_variadic_arg,
+                    mapper_variadic_arg_ref,
+                    mapper_variadic_arg_mut,
                 );
             }
             syn::Stmt::Expr(
@@ -264,12 +264,12 @@ pub fn variadic(_: TokenStream, item: TokenStream) -> TokenStream {
         proc_macro2::Span::call_site(),
     );
 
-    let mapper_varidiac_arg = variadic_arg.clone();
+    let mapper_variadic_arg = variadic_arg.clone();
     let foreach_arg_type = variadic_arg.ty.clone();
-    let mut mapper_varidiac_arg_ref = mapper_varidiac_arg.clone();
-    mapper_varidiac_arg_ref.ty = parse_quote!(&#foreach_arg_type);
-    let mut mapper_varidiac_arg_mut = mapper_varidiac_arg.clone();
-    mapper_varidiac_arg_mut.ty = parse_quote!(&mut #foreach_arg_type);
+    let mut mapper_variadic_arg_ref = mapper_variadic_arg.clone();
+    mapper_variadic_arg_ref.ty = parse_quote!(&#foreach_arg_type);
+    let mut mapper_variadic_arg_mut = mapper_variadic_arg.clone();
+    mapper_variadic_arg_mut.ty = parse_quote!(&mut #foreach_arg_type);
     let mut generics_trait = input.sig.generics.clone();
     let mut generics_foreach_tuple = generics_trait.clone();
     let variadic_generic_param = generics_trait.params.pop();
@@ -277,7 +277,7 @@ pub fn variadic(_: TokenStream, item: TokenStream) -> TokenStream {
         variadic_generic_param.map(|param| parse_quote!(<#param>));
     let mut variadic_where_clause = generics_trait.where_clause.clone();
     if let Some(mut where_clause) = generics_trait.where_clause {
-        let (variadic_related, non_variadics) =
+        let (variadic_related, non_variadic_related) =
             where_clause.predicates.into_iter().partition(|pred| {
                 if let syn::WherePredicate::Type(type_pred) = pred {
                     type_pred
@@ -288,7 +288,7 @@ pub fn variadic(_: TokenStream, item: TokenStream) -> TokenStream {
                     false
                 }
             });
-        where_clause.predicates = non_variadics;
+        where_clause.predicates = non_variadic_related;
         generics_trait.where_clause = Some(where_clause);
         variadic_where_clause.as_mut().unwrap().predicates = variadic_related;
     }
@@ -328,21 +328,21 @@ pub fn variadic(_: TokenStream, item: TokenStream) -> TokenStream {
         trait #trait_mapper_name #trait_impl_generics #trait_where_clause {
             #[doc(hidden)]
             #[allow(unused)]
-            fn map #variadic_generic_param (&mut self, #mapper_varidiac_arg)
+            fn map #variadic_generic_param (&mut self, #mapper_variadic_arg)
             #variadic_where_clause {}
         }
         #[doc(hidden)]
         trait #trait_mapper_ref_name #trait_impl_generics #trait_where_clause {
             #[doc(hidden)]
             #[allow(unused)]
-            fn map_ref #variadic_generic_param (&mut self, #mapper_varidiac_arg_ref)
+            fn map_ref #variadic_generic_param (&mut self, #mapper_variadic_arg_ref)
             #variadic_where_clause {}
         }
         #[doc(hidden)]
         trait #trait_mapper_mut_name #trait_impl_generics #trait_where_clause {
             #[doc(hidden)]
             #[allow(unused)]
-            fn map_mut #variadic_generic_param (&mut self, #mapper_varidiac_arg_mut)
+            fn map_mut #variadic_generic_param (&mut self, #mapper_variadic_arg_mut)
             #variadic_where_clause {}
         }
         #[doc(hidden)]
@@ -414,9 +414,9 @@ pub fn variadic(_: TokenStream, item: TokenStream) -> TokenStream {
         }
         .into();
     };
-    let variadic_genenric_type = variadic_generic.ident.clone();
+    let variadic_generic_type = variadic_generic.ident.clone();
     std::mem::take(&mut variadic_generic.bounds);
-    variadic_arg.ty = Box::new(parse_quote!(#variadic_genenric_type));
+    variadic_arg.ty = Box::new(parse_quote!(#variadic_generic_type));
     variadic_arg.attrs.push(parse_quote!(#[allow(unused_mut)]));
     variadic_arg.pat = parse_quote!(mut #variadic_ident);
     input.sig.inputs.push(syn::FnArg::Typed(variadic_arg));
@@ -427,7 +427,7 @@ pub fn variadic(_: TokenStream, item: TokenStream) -> TokenStream {
         .generics
         .make_where_clause()
         .predicates
-        .push(parse_quote!(#variadic_genenric_type: #trait_foreach_name #trait_ty_generics));
+        .push(parse_quote!(#variadic_generic_type: #trait_foreach_name #trait_ty_generics));
 
     input.block.stmts = replace_stmts(
         input.block.stmts,
@@ -441,9 +441,9 @@ pub fn variadic(_: TokenStream, item: TokenStream) -> TokenStream {
         &variadic_ident,
         &variadic_generic_param,
         &variadic_where_clause,
-        &mapper_varidiac_arg,
-        &mapper_varidiac_arg_ref,
-        &mapper_varidiac_arg_mut,
+        &mapper_variadic_arg,
+        &mapper_variadic_arg_ref,
+        &mapper_variadic_arg_mut,
     );
 
     quote! {
