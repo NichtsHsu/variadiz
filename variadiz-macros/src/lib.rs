@@ -86,7 +86,11 @@ fn replace_stmts(
                             original_types.push(std::mem::replace(
                                 &mut field.ty,
                                 syn::parse_str(
-                                    &format!("__T{}", field.ident.as_ref().unwrap().to_string())
+                                    &format!(
+                                        "__T{}{}",
+                                        field.ident.as_ref().unwrap().to_string(),
+                                        nanoid!(16, &ALPHABETS)
+                                    )
                                 ).unwrap()
                             ))
                         });
@@ -251,6 +255,14 @@ pub fn variadic(_: TokenStream, item: TokenStream) -> TokenStream {
         &format!("__Foreach{}", nanoid!(16, &ALPHABETS)),
         proc_macro2::Span::call_site(),
     );
+    let for_each_generic_f = proc_macro2::Ident::new(
+        &format!("__F{}", nanoid!(16, &ALPHABETS)),
+        proc_macro2::Span::call_site(),
+    );
+    let for_each_generic_others = proc_macro2::Ident::new(
+        &format!("__Others{}", nanoid!(16, &ALPHABETS)),
+        proc_macro2::Span::call_site(),
+    );
 
     let mapper_varidiac_arg = variadic_arg.clone();
     let foreach_arg_type = variadic_arg.ty.clone();
@@ -282,11 +294,13 @@ pub fn variadic(_: TokenStream, item: TokenStream) -> TokenStream {
     }
     let (trait_impl_generics, trait_ty_generics, trait_where_clause) =
         generics_trait.split_for_impl();
-    generics_foreach_tuple.params.push(parse_quote!(__Others));
+    generics_foreach_tuple
+        .params
+        .push(parse_quote!(#for_each_generic_others));
     generics_foreach_tuple
         .make_where_clause()
         .predicates
-        .push(parse_quote!(__Others: #trait_foreach_name #trait_ty_generics));
+        .push(parse_quote!(#for_each_generic_others: #trait_foreach_name #trait_ty_generics));
     let mapper_fully_qualified = if generics_trait.params.is_empty() {
         quote!( #trait_mapper_name)
     } else {
@@ -336,59 +350,59 @@ pub fn variadic(_: TokenStream, item: TokenStream) -> TokenStream {
         #trait_where_clause
         {
             #[doc(hidden)]
-            fn foreach<__F>(self, f: &mut __F)
+            fn foreach<#for_each_generic_f>(self, f: &mut #for_each_generic_f)
             where
-                __F: #trait_mapper_name #trait_ty_generics;
+                #for_each_generic_f: #trait_mapper_name #trait_ty_generics;
             #[doc(hidden)]
-            fn foreach_ref<__F>(&self, f: &mut __F)
+            fn foreach_ref<#for_each_generic_f>(&self, f: &mut #for_each_generic_f)
             where
-                __F: #trait_mapper_ref_name #trait_ty_generics;
+                #for_each_generic_f: #trait_mapper_ref_name #trait_ty_generics;
             #[doc(hidden)]
-            fn foreach_mut<__F>(&mut self, f: &mut __F)
+            fn foreach_mut<#for_each_generic_f>(&mut self, f: &mut #for_each_generic_f)
             where
-                __F: #trait_mapper_mut_name #trait_ty_generics;
+                #for_each_generic_f: #trait_mapper_mut_name #trait_ty_generics;
         }
         impl #trait_impl_generics #trait_foreach_name #trait_ty_generics for
         ::tuplez::Unit #trait_where_clause {
-            fn foreach<__F>(self, _: &mut __F)
+            fn foreach<#for_each_generic_f>(self, _: &mut #for_each_generic_f)
             where
-                __F: #trait_mapper_name #trait_ty_generics
+                #for_each_generic_f: #trait_mapper_name #trait_ty_generics
             {
             }
-            fn foreach_ref<__F>(&self, _: &mut __F)
+            fn foreach_ref<#for_each_generic_f>(&self, _: &mut #for_each_generic_f)
             where
-                __F: #trait_mapper_ref_name #trait_ty_generics
+                #for_each_generic_f: #trait_mapper_ref_name #trait_ty_generics
             {
             }
-            fn foreach_mut<__F>(&mut self, _: &mut __F)
+            fn foreach_mut<#for_each_generic_f>(&mut self, _: &mut #for_each_generic_f)
             where
-                __F: #trait_mapper_mut_name #trait_ty_generics
+                #for_each_generic_f: #trait_mapper_mut_name #trait_ty_generics
             {
             }
         }
         impl #tuple_impl_generics #trait_foreach_name #trait_ty_generics
-        for ::tuplez::Tuple<#foreach_arg_type, __Others> #tuple_where_clause
+        for ::tuplez::Tuple<#foreach_arg_type, #for_each_generic_others> #tuple_where_clause
         {
-            fn foreach<__F>(self, f: &mut __F)
+            fn foreach<#for_each_generic_f>(self, f: &mut #for_each_generic_f)
             where
-                __F: #trait_mapper_name #trait_ty_generics
+                #for_each_generic_f: #trait_mapper_name #trait_ty_generics
             {
                 #mapper_fully_qualified ::map::<#variadic_generic_type>(f, self.0);
-                #foreach_fully_qualified ::foreach::<__F>(self.1, f)
+                #foreach_fully_qualified ::foreach::<#for_each_generic_f>(self.1, f)
             }
-            fn foreach_ref<__F>(&self, f: &mut __F)
+            fn foreach_ref<#for_each_generic_f>(&self, f: &mut #for_each_generic_f)
             where
-                __F: #trait_mapper_ref_name #trait_ty_generics
+                #for_each_generic_f: #trait_mapper_ref_name #trait_ty_generics
             {
                 #mapper_ref_fully_qualified ::map_ref::<#variadic_generic_type>(f, &self.0);
-                #foreach_fully_qualified ::foreach_ref::<__F>(&self.1, f)
+                #foreach_fully_qualified ::foreach_ref::<#for_each_generic_f>(&self.1, f)
             }
-            fn foreach_mut<__F>(&mut self, f: &mut __F)
+            fn foreach_mut<#for_each_generic_f>(&mut self, f: &mut #for_each_generic_f)
             where
-                __F: #trait_mapper_mut_name #trait_ty_generics
+                #for_each_generic_f: #trait_mapper_mut_name #trait_ty_generics
             {
                 #mapper_mut_fully_qualified ::map_mut::<#variadic_generic_type>(f, &mut self.0);
-                #foreach_fully_qualified ::foreach_mut::<__F>(&mut self.1, f)
+                #foreach_fully_qualified ::foreach_mut::<#for_each_generic_f>(&mut self.1, f)
             }
         }
     };
