@@ -123,7 +123,9 @@ fn replace_stmts(
                     block = parse_quote! {
                         {
                             #struct_decl
-                            impl #trait_impl_generics #trait_mapper_name #trait_ty_generics for #struct_mapper_name #original_types #trait_where_clause {
+                            impl #trait_impl_generics #trait_mapper_name #trait_ty_generics for
+                            #struct_mapper_name #original_types #trait_where_clause
+                            {
                                 fn map #variadic_generic_param (&mut self, #mapper_varidiac_arg)
                                 #variadic_where_clause
                                 {
@@ -138,7 +140,9 @@ fn replace_stmts(
                     block = parse_quote! {
                         {
                             #struct_decl
-                            impl #trait_impl_generics #trait_mapper_ref_name #trait_ty_generics for #struct_mapper_name #original_types #trait_where_clause {
+                            impl #trait_impl_generics #trait_mapper_ref_name #trait_ty_generics for
+                            #struct_mapper_name #original_types #trait_where_clause
+                            {
                                 fn map_ref #variadic_generic_param (&mut self, #mapper_varidiac_arg_ref)
                                 #variadic_where_clause
                                 {
@@ -153,7 +157,9 @@ fn replace_stmts(
                     block = parse_quote! {
                         {
                             #struct_decl
-                            impl #trait_impl_generics #trait_mapper_mut_name #trait_ty_generics for #struct_mapper_name #original_types #trait_where_clause {
+                            impl #trait_impl_generics #trait_mapper_mut_name #trait_ty_generics for
+                            #struct_mapper_name #original_types #trait_where_clause
+                            {
                                 fn map_mut #variadic_generic_param (&mut self, #mapper_varidiac_arg_mut)
                                 #variadic_where_clause
                                 {
