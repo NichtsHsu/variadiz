@@ -107,7 +107,7 @@
 //! It should be noted that the expansion block behaves like a function body rather than a closure body -
 //! it cannot capture variables from the context.
 //!
-//! To capture context variables, you must declare them like declare function parameters:
+//! To capture context variables, you must declare them like how you declare function parameters:
 //!
 //! ```no_run
 //! # use variadiz::*;
