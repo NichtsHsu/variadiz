@@ -12,7 +12,7 @@ keywords = ["variadic", "variadic-function", "parameter-pack"]
 
 [package]
 name = "variadiz"
-version = "0.1.1"
+version = "0.1.2"
 description = "Variadic function support for rust"
 authors.workspace = true
 license.workspace = true
