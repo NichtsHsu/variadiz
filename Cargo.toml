@@ -1,0 +1,28 @@
+[workspace]
+members = ["variadiz-macros"]
+
+[workspace.package]
+authors = ["Nichts Hsu <NichtsVonChaos@gmail.com>"]
+license = "MIT OR Apache-2.0"
+readme = "README.md"
+edition = "2021"
+repository = "https://github.com/NichtsHsu/variadiz"
+documentation = "https://docs.rs/variadiz"
+keywords = ["variadic", "variadic-function", "parameter-pack"]
+
+[package]
+name = "variadiz"
+version = "0.1.0"
+description = "Variadic function support for rust"
+authors.workspace = true
+license.workspace = true
+edition.workspace = true
+readme.workspace = true
+repository.workspace = true
+documentation.workspace = true
+keywords.workspace = true
+categories = ["rust-patterns"]
+
+[dependencies]
+variadiz-macros = { version = "0.1.0", path = "variadiz-macros" }
+tuplez = "0.9.0"
