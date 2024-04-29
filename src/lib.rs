@@ -85,7 +85,7 @@
 //!
 //! ## Expand variadic parameter pack
 //!
-//! To expand the variadic parameter pack, you need to add a `va_expand` attribute on a block:
+//! To expand the variadic parameter pack, you need to add a `#[va_expand]` attribute on a block:
 //!
 //! ```no_run
 //! # use variadiz::*;
