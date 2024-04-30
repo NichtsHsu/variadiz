@@ -38,94 +38,86 @@ fn replace_stmts(
     mapper_variadic_arg_mut: &syn::PatType,
 ) -> Vec<syn::Stmt> {
     stmts
-    .into_iter()
-    .map(|stmt| match stmt {
-        syn::Stmt::Expr(
-            syn::Expr::Block(syn::ExprBlock {
-                mut attrs,
-                mut label,
-                mut block,
-            }),
-            semi,
-        ) => {
-            let attr = attrs.into_iter().find(|attr| {
-                attr.meta.path().is_ident("va_expand")
-                    || attr.meta.path().is_ident("va_expand_ref")
-                    || attr.meta.path().is_ident("va_expand_mut")
-            });
-            attrs = vec![];
-            label = None;
-            if let Some(attr) = attr {
-                let struct_mapper_name = proc_macro2::Ident::new(
-                    &format!("__Mapper{}", nanoid!(16, &ALPHABETS)),
-                    proc_macro2::Span::call_site(),
-                );
-                let captures = if let syn::Meta::List(list) = &attr.meta {
-                    let tokens = &list.tokens;
-                    let variable_list: syn::FieldsNamed = parse_quote!({#tokens});
-                    Some(variable_list)
-                } else {
-                    None
-                };
-                let (
-                        struct_decl,
-                        original_types,
-                        unpack,
-                        instance,
-                    ):
-                    (
+        .into_iter()
+        .map(|stmt| match stmt {
+            syn::Stmt::Expr(
+                syn::Expr::Block(syn::ExprBlock {
+                    mut attrs,
+                    mut label,
+                    mut block,
+                }),
+                semi,
+            ) => {
+                let attr = attrs.into_iter().find(|attr| {
+                    attr.meta.path().is_ident("va_expand")
+                        || attr.meta.path().is_ident("va_expand_ref")
+                        || attr.meta.path().is_ident("va_expand_mut")
+                });
+                attrs = vec![];
+                label = None;
+                if let Some(attr) = attr {
+                    let struct_mapper_name = proc_macro2::Ident::new(
+                        &format!("__Mapper{}", nanoid!(16, &ALPHABETS)),
+                        proc_macro2::Span::call_site(),
+                    );
+                    let captures = if let syn::Meta::List(list) = &attr.meta {
+                        let tokens = &list.tokens;
+                        let variable_list: syn::FieldsNamed = parse_quote!({#tokens});
+                        Some(variable_list)
+                    } else {
+                        None
+                    };
+                    let (struct_decl, original_types, unpack, instance): (
                         syn::ItemStruct,
                         Option<proc_macro2::TokenStream>,
                         Option<syn::Stmt>,
                         syn::Expr,
                     ) = match captures {
-                    Some(field_defs) => {
-                        let mut field_defs = field_defs.named;
-                        let mut original_types = vec![];
-                        field_defs.iter_mut().for_each(|field| {
-                            original_types.push(std::mem::replace(
-                                &mut field.ty,
-                                syn::parse_str(
-                                    &format!(
+                        Some(field_defs) => {
+                            let mut field_defs = field_defs.named;
+                            let mut original_types = vec![];
+                            field_defs.iter_mut().for_each(|field| {
+                                original_types.push(std::mem::replace(
+                                    &mut field.ty,
+                                    syn::parse_str(&format!(
                                         "__T{}{}",
-                                        field.ident.as_ref().unwrap().to_string(),
+                                        field.ident.as_ref().unwrap(),
                                         nanoid!(16, &ALPHABETS)
-                                    )
-                                ).unwrap()
-                            ))
-                        });
-                        let fields_types = field_defs
-                            .iter()
-                            .map(|field| field.ty.clone())
-                            .collect::<Vec<syn::Type>>();
-                        let fields_idents = field_defs
-                            .iter()
-                            .map(|field| field.ident.clone().unwrap())
-                            .collect::<Vec<syn::Ident>>();
-                        (
-                            parse_quote! {
-                                struct #struct_mapper_name <#(#fields_types),*> { #field_defs }
-                            },
-                            Some(quote! { <#(#original_types),*> }),
-                            Some(parse_quote! {
-                                let Self { #(#fields_idents),* } = self;
-                            }),
-                            parse_quote! {
-                                #struct_mapper_name { #(#fields_idents),* }
-                            },
-                        )
-                    }
-                    _ => (
-                        parse_quote!(struct #struct_mapper_name;),
-                        None,
-                        None,
-                        parse_quote! { #struct_mapper_name }
-                    ),
-                };
+                                    ))
+                                    .unwrap(),
+                                ))
+                            });
+                            let fields_types = field_defs
+                                .iter()
+                                .map(|field| field.ty.clone())
+                                .collect::<Vec<syn::Type>>();
+                            let fields_idents = field_defs
+                                .iter()
+                                .map(|field| field.ident.clone().unwrap())
+                                .collect::<Vec<syn::Ident>>();
+                            (
+                                parse_quote! {
+                                    struct #struct_mapper_name <#(#fields_types),*> { #field_defs }
+                                },
+                                Some(quote! { <#(#original_types),*> }),
+                                Some(parse_quote! {
+                                    let Self { #(#fields_idents),* } = self;
+                                }),
+                                parse_quote! {
+                                    #struct_mapper_name { #(#fields_idents),* }
+                                },
+                            )
+                        }
+                        _ => (
+                            parse_quote!(struct #struct_mapper_name;),
+                            None,
+                            None,
+                            parse_quote! { #struct_mapper_name },
+                        ),
+                    };
 
-                if attr.meta.path().is_ident("va_expand") {
-                    block = parse_quote! {
-                        {
+                    if attr.meta.path().is_ident("va_expand") {
+                        block = parse_quote! {{
                             #struct_decl
                             impl #trait_impl_generics #trait_mapper_name #trait_ty_generics for
                             #struct_mapper_name #original_types #trait_where_clause
@@ -138,11 +130,9 @@ fn replace_stmts(
                                 }
                             }
                             #trait_foreach_name::foreach(#variadic_ident, &mut #instance);
-                        }
-                    };
-                } else if attr.meta.path().is_ident("va_expand_ref") {
-                    block = parse_quote! {
-                        {
+                        }};
+                    } else if attr.meta.path().is_ident("va_expand_ref") {
+                        block = parse_quote! {{
                             #struct_decl
                             impl #trait_impl_generics #trait_mapper_ref_name #trait_ty_generics for
                             #struct_mapper_name #original_types #trait_where_clause
@@ -155,11 +145,9 @@ fn replace_stmts(
                                 }
                             }
                             #trait_foreach_name::foreach_ref(&#variadic_ident, &mut #instance);
-                        }
-                    };
-                } else if attr.meta.path().is_ident("va_expand_mut") {
-                    block = parse_quote! {
-                        {
+                        }};
+                    } else if attr.meta.path().is_ident("va_expand_mut") {
+                        block = parse_quote! {{
                             #struct_decl
                             impl #trait_impl_generics #trait_mapper_mut_name #trait_ty_generics for
                             #struct_mapper_name #original_types #trait_where_clause
@@ -172,41 +160,40 @@ fn replace_stmts(
                                 }
                             }
                             #trait_foreach_name::foreach_mut(&mut #variadic_ident, &mut #instance);
-                        }
-                    };
+                        }};
+                    } else {
+                        unreachable!()
+                    }
                 } else {
-                    unreachable!()
+                    block.stmts = replace_stmts(
+                        block.stmts,
+                        trait_mapper_name,
+                        trait_mapper_ref_name,
+                        trait_mapper_mut_name,
+                        trait_foreach_name,
+                        trait_impl_generics,
+                        trait_ty_generics,
+                        trait_where_clause,
+                        variadic_ident,
+                        variadic_generic_param,
+                        variadic_where_clause,
+                        mapper_variadic_arg,
+                        mapper_variadic_arg_ref,
+                        mapper_variadic_arg_mut,
+                    );
                 }
-            } else {
-                block.stmts = replace_stmts(
-                    block.stmts,
-                    trait_mapper_name,
-                    trait_mapper_ref_name,
-                    trait_mapper_mut_name,
-                    trait_foreach_name,
-                    trait_impl_generics,
-                    trait_ty_generics,
-                    trait_where_clause,
-                    variadic_ident,
-                    variadic_generic_param,
-                    variadic_where_clause,
-                    mapper_variadic_arg,
-                    mapper_variadic_arg_ref,
-                    mapper_variadic_arg_mut,
-                );
+                syn::Stmt::Expr(
+                    syn::Expr::Block(syn::ExprBlock {
+                        attrs,
+                        label,
+                        block,
+                    }),
+                    semi,
+                )
             }
-            syn::Stmt::Expr(
-                syn::Expr::Block(syn::ExprBlock {
-                    attrs,
-                    label,
-                    block,
-                }),
-                semi,
-            )
-        }
-        _ => stmt,
-    })
-    .collect()
+            _ => stmt,
+        })
+        .collect()
 }
 
 #[proc_macro_attribute]
@@ -421,7 +408,11 @@ pub fn variadic(_: TokenStream, item: TokenStream) -> TokenStream {
     variadic_arg.pat = parse_quote!(mut #variadic_ident);
     input.sig.inputs.push(syn::FnArg::Typed(variadic_arg));
 
-    input.sig.generics.where_clause = generics_trait.where_clause.clone();
+    input
+        .sig
+        .generics
+        .where_clause
+        .clone_from(&generics_trait.where_clause);
     input
         .sig
         .generics
