@@ -138,7 +138,7 @@
 //!     T: std::fmt::Display,
 //!     U: std::fmt::Debug,
 //! {
-//!      // Capture `counter` by mutable reference.
+//!     // Capture `counter` by mutable reference.
 //!     #[va_expand_ref(mut counter: usize)]
 //!     {
 //!         println!("{counter}: {:?}", others);
@@ -180,7 +180,7 @@
 //!     #[va_expand(mut collector: Vec<T>)]
 //!     {
 //!         if let Some(item) = others {
-//!             // The type `U` is specific to each element of variadic parameter.
+//!             // The type `U` is specific to each variadic parameter.
 //!             // `U` outside an expanded block is **undefined**.
 //!             collector.push(<U as Into<T>>::into(item));
 //!         }
@@ -201,8 +201,8 @@
 //! ["hello", "world", "e"]
 //! ```
 //!
-//! Except for the captured variables, all generic types, and the identifier of the variadic parameter,
-//! the expanded block cannot interaction with the outer.
+//! Except for the captured variables, all generic types, and the identifier of the variadic parameter pack,
+//! the expanded block cannot interact with the outer code block.
 //!
 //! This means, you cannot return a value to the outer by omitting the semicolon of the last statement,
 //! nor can you operate on the outer's control flow (i.e., `for`, `loop`, labelled block) via `continue`
@@ -213,7 +213,7 @@
 //!
 //! # Call variadic function
 //!
-//! It is easy to see from the above example that you should pack the variadic arguments into [`va_args!`] macro
+//! It is easy to see from the above example that you should pack all variadic arguments into [`va_args!`] macro
 //! and pass them as a single argument.
 //!
 //! The [`va_args!`] macro accepts any number of expressions. Sometimes you may want to annotate the type
