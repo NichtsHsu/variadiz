@@ -12,12 +12,12 @@
 //! use variadiz::*;
 //!
 //! #[variadic]
-//! fn print<T, U>(counter: usize, non_variadic: T, others: Option<U>)
+//! fn print<T, U>(mut counter: usize, non_variadic: T, others: Option<U>)
 //! where
 //!     T: std::fmt::Display,
 //!     U: std::fmt::Debug,
 //! {
-//!     #[va_expand_ref(counter: usize)]
+//!     #[va_expand_ref(mut counter: usize)]
 //!     {
 //!         println!("{counter}: {:?}", others);
 //!         *counter += 1;
@@ -26,7 +26,7 @@
 //!     {
 //!         others.take();
 //!     }
-//!     #[va_expand(counter: usize, non_variadic: T)]
+//!     #[va_expand(mut counter: usize, non_variadic: T)]
 //!     {
 //!         println!("[{non_variadic}] {counter}: {:?}", others);
 //!         *counter += 1;
@@ -46,9 +46,9 @@
 //! 0: Some("hello")
 //! 1: Some([1, 2, 3])
 //! 2: Some('e')
-//! [20240429] 0: None
-//! [20240429] 1: None
-//! [20240429] 2: None
+//! [20240429] 3: None
+//! [20240429] 4: None
+//! [20240429] 5: None
 //! ```
 //!
 //! # Details
@@ -104,8 +104,10 @@
 //! a mutable reference to each variadic parameter, allowing you to expand the variadic parameter pack
 //! multiple times.
 //!
+//! The expanded block is not allowed to evaluate any value,
+//!
 //! It should be noted that the expansion block behaves like a function body rather than a closure body -
-//! it cannot capture variables from the context.
+//! it cannot capture variables from the context automatically.
 //!
 //! To capture context variables, you must declare them like how you declare function parameters:
 //!
@@ -120,8 +122,10 @@
 //! }
 //! ```
 //!
-//! **NOTE**: Although capturing the variables will move them in, to ensure that the captured variables
-//! can be used multiple times after being expanded, what you actually get are mutable references to them.
+//! **NOTE**: Since the captured variables must be usable multiple times after being expanded,
+//! we can only use their references anyway.
+//! So when you declare to capture `x`, the `&x` is actually captured.
+//! You can add a `mut` before the captured variable to indicate capturing its mutable reference.
 //!
 //! Let's go back to the original example:
 //!
@@ -129,28 +133,26 @@
 //! use variadiz::*;
 //!
 //! #[variadic]
-//! fn print<T, U>(counter: usize, non_variadic: T, others: Option<U>)
+//! fn print<T, U>(mut counter: usize, non_variadic: T, others: Option<U>)
 //! where
 //!     T: std::fmt::Display,
 //!     U: std::fmt::Debug,
 //! {
-//!     #[va_expand_ref(counter: usize)]
-//!             // Move `counter` in, `counter` is 0.
-//!             // Since `usize` implements `Copy`,
-//!             // it is a *copy* of the original `counter`.
+//!      // Capture `counter` by mutable reference.
+//!     #[va_expand_ref(mut counter: usize)]
 //!     {
 //!         println!("{counter}: {:?}", others);
+//!         // `counter` here is actually `&mut usize`,
+//!         //  a mutable reference to the original `counter`.
 //!         *counter += 1;
-//!             // `counter` here is actually `&mut usize`,
-//!             //  a mutable reference to *the copied* `counter`,
-//!             //  so the original `counter` will NOT be modified.
 //!     }
 //!     #[va_expand_mut]
 //!     {
 //!         others.take();
 //!     }
-//!     #[va_expand(counter: usize, non_variadic: T)]
-//!             // Move `counter` in, again, it is still `0`.
+//!     // Capture `counter` by mutable reference,
+//!     // then capture `non_variadic` by immutable reference.
+//!     #[va_expand(mut counter: usize, non_variadic: T)]
 //!     {
 //!         println!("[{non_variadic}] {counter}: {:?}", others);
 //!         *counter += 1;
@@ -164,24 +166,26 @@
 //! );
 //! ```
 //!
-//! If you do not want to consume the context variables, then you should create references to them:
+//! Another example:
 //!
 //! ```rust
 //! use variadiz::*;
 //!
 //! #[variadic]
-//! fn collect<T, U>(mut init: Vec<T>, others: Option<U>) -> Vec<T>
+//! fn collect<T, U>(mut collector: Vec<T>, others: Option<U>) -> Vec<T>
 //! where
-//!     U: Into<T>,
+//!     U: Into<T>, // `U` can be bounded by `T`, but not vice versa.
 //! {
-//!     let collector = &mut init;
-//!     #[va_expand(collector: &mut Vec<T>)]
-//!             // One thing to note is,
-//!             // `collector` is actually `&mut &mut Vec<T>`.
+//!     // `collector` is actually `&mut Vec<T>`
+//!     #[va_expand(mut collector: Vec<T>)]
 //!     {
-//!         others.map(|item| collector.push(item.into()));
+//!         if let Some(item) = others {
+//!             // The type `U` is specific to each element of variadic parameter.
+//!             // `U` outside an expanded block is **undefined**.
+//!             collector.push(<U as Into<T>>::into(item));
+//!         }
 //!     }
-//!     init
+//!     collector
 //! }
 //!
 //! let strs = collect(
@@ -197,6 +201,16 @@
 //! ["hello", "world", "e"]
 //! ```
 //!
+//! Except for the captured variables, all generic types, and the identifier of the variadic parameter,
+//! the expanded block cannot interaction with the outer.
+//!
+//! This means, you cannot return a value to the outer by omitting the semicolon of the last statement,
+//! nor can you operate on the outer's control flow (i.e., `for`, `loop`, labelled block) via `continue`
+//! and `break`.
+//!
+//! A statement `return` in an expanded block will only exit the expanded block itself (similar to `continue`
+//! in a `loop` block) rather than exiting the outer function.
+//!
 //! # Call variadic function
 //!
 //! It is easy to see from the above example that you should pack the variadic arguments into [`va_args!`] macro
@@ -209,12 +223,12 @@
 //! # use variadiz::*;
 //! #
 //! # #[variadic]
-//! # fn print<T, U>(counter: usize, non_variadic: T, others: Option<U>)
+//! # fn print<T, U>(mut counter: usize, non_variadic: T, others: Option<U>)
 //! # where
 //! #     T: std::fmt::Display,
 //! #     U: std::fmt::Debug,
 //! # {
-//! #     #[va_expand_ref(counter: usize)]
+//! #     #[va_expand_ref(mut counter: usize)]
 //! #     {
 //! #         println!("{counter}: {:?}", others);
 //! #         *counter += 1;
@@ -223,7 +237,7 @@
 //! #     {
 //! #         others.take();
 //! #     }
-//! #     #[va_expand(counter: usize, non_variadic: T)]
+//! #     #[va_expand(mut counter: usize, non_variadic: T)]
 //! #     {
 //! #         println!("[{non_variadic}] {counter}: {:?}", others);
 //! #         *counter += 1;

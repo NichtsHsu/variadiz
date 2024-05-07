@@ -3,9 +3,9 @@ use proc_macro::TokenStream;
 use proc_macro2::{Span, TokenStream as TokenStream2, TokenTree as TokenTree2};
 use quote::{quote, ToTokens};
 use syn::{
-    parse_macro_input, parse_quote, punctuated::Pair, spanned::Spanned, Expr, ExprBlock,
-    FieldsNamed, FnArg, GenericParam, Generics, Ident, ItemFn, ItemStruct, Meta, Pat, PatType,
-    Stmt, Token, Type, TypeParam, WhereClause, WherePredicate,
+    parse_macro_input, parse_quote, punctuated::Pair, spanned::Spanned, Expr, ExprBlock, FnArg,
+    GenericParam, Generics, Ident, ItemFn, ItemStruct, Meta, Pat, PatType, Signature, Stmt, Token,
+    Type, TypeParam, WhereClause, WherePredicate,
 };
 
 const ALPHABETS: [char; 62] = [
@@ -45,7 +45,7 @@ fn variadic_expand(
     stmts: Vec<Stmt>,
     parameter: &VariadicParameter,
     local_traits: &LocalTraits,
-) -> Vec<Stmt> {
+) -> syn::Result<Vec<Stmt>> {
     stmts
         .into_iter()
         .map(|stmt| {
@@ -58,7 +58,7 @@ fn variadic_expand(
                 semi,
             ) = stmt
             else {
-                return stmt;
+                return Ok(stmt);
             };
 
             let expand_attr = std::mem::take(&mut attrs).into_iter().find(|attr| {
@@ -67,15 +67,15 @@ fn variadic_expand(
                     || attr.meta.path().is_ident("va_expand_mut")
             });
             let Some(expand_attr) = expand_attr else {
-                block.stmts = variadic_expand(block.stmts, parameter, local_traits);
-                return Stmt::Expr(
+                block.stmts = variadic_expand(block.stmts, parameter, local_traits)?;
+                return Ok(Stmt::Expr(
                     Expr::Block(ExprBlock {
                         attrs,
                         label,
                         block,
                     }),
                     semi,
-                );
+                ));
             };
             label = None;
 
@@ -86,43 +86,90 @@ fn variadic_expand(
 
             let struct_decl: ItemStruct;
             let original_types: Option<TokenStream2>;
-            let unpack: Option<Stmt>;
+            let unpack: Option<TokenStream2>;
             let instantiation: Expr;
             if let Meta::List(list) = &expand_attr.meta {
                 let tokens = &list.tokens;
-                let variable_list: FieldsNamed = parse_quote!({#tokens});
-                let mut fields_defs = variable_list.named;
-                let mut original_types_list = vec![];
-                fields_defs.iter_mut().for_each(|field| {
-                    original_types_list.push(std::mem::replace(
-                        &mut field.ty,
-                        syn::parse_str(&format!(
-                            "__T{}{}",
-                            field.ident.as_ref().unwrap(),
-                            nanoid!(16, &ALPHABETS)
-                        ))
-                        .unwrap(),
-                    ))
-                });
-                let fields_types = fields_defs
+                let parse_as_signature: Signature = parse_quote!(fn __capture(#tokens));
+                let variable_list = parse_as_signature.inputs;
+                let variable_list = variable_list
                     .iter()
-                    .map(|field| field.ty.clone())
+                    .map(|arg| match arg {
+                        FnArg::Receiver(arg) => Ok((
+                            arg.mutability.is_some(),
+                            parse_quote!(self),
+                            (*arg.ty).clone(),
+                        )),
+                        FnArg::Typed(arg) => {
+                            let Pat::Ident(ident) = &*arg.pat else {
+                                return Err(syn::Error::new(
+                                    arg.pat.span(),
+                                    "variable captures does not support patterns",
+                                ));
+                            };
+                            Ok((
+                                ident.mutability.is_some(),
+                                ident.ident.clone(),
+                                (*arg.ty).clone(),
+                            ))
+                        }
+                    })
+                    .collect::<syn::Result<Vec<(bool, Ident, Type)>>>()?;
+                let original_types_list = variable_list
+                    .iter()
+                    .map(|(mutability, _, ty)| {
+                        if *mutability {
+                            parse_quote!(&mut #ty)
+                        } else {
+                            parse_quote!(&#ty)
+                        }
+                    })
                     .collect::<Vec<Type>>();
-                let fields_idents = fields_defs
+                let fields_types = variable_list
                     .iter()
-                    .map(|field| field.ident.clone().unwrap())
-                    .collect::<Vec<Ident>>();
+                    .map(|(_, ident, _)| {
+                        syn::parse_str(&format!("__T{}{}", ident, nanoid!(16, &ALPHABETS))).unwrap()
+                    })
+                    .collect::<Vec<Type>>();
+                let fields_defs = variable_list
+                    .iter()
+                    .zip(fields_types.iter())
+                    .map(|((_, ident, _), ty)| quote!(#ident: #ty))
+                    .collect::<Vec<TokenStream2>>();
+                let fields_init = variable_list
+                    .iter()
+                    .map(|(mutability, ident, _)| {
+                        if *mutability {
+                            quote!(#ident: &mut #ident)
+                        } else {
+                            quote!(#ident: &#ident)
+                        }
+                    })
+                    .collect::<Vec<TokenStream2>>();
+                let unpack_stmts = variable_list
+                    .iter()
+                    .map(|(mutability, ident, _)| {
+                        if *mutability {
+                            parse_quote! {
+                                let #ident = &mut *self. #ident;
+                            }
+                        } else {
+                            parse_quote! {
+                                let #ident = &*self. #ident;
+                            }
+                        }
+                    })
+                    .collect::<Vec<Stmt>>();
+
                 struct_decl = parse_quote! {
                     struct #local_struct_name <#(#fields_types),*> {
-                         #fields_defs
+                         #(#fields_defs),*
                     }
                 };
                 original_types = Some(quote!(<#(#original_types_list),*>));
-                unpack = Some(parse_quote! {
-                    let Self { #(#fields_idents),* } = self;
-                });
+                unpack = Some(quote!(#(#unpack_stmts)*));
                 instantiation = parse_quote! {
-                    #local_struct_name { #(#fields_idents),* }
+                    #local_struct_name::#original_types { #(#fields_init),* }
                 };
             } else {
                 struct_decl = parse_quote!(struct #local_struct_name;);
@@ -185,14 +232,14 @@ fn variadic_expand(
                     &mut #instantiation
                 )
             }};
-            Stmt::Expr(
+            Ok(Stmt::Expr(
                 Expr::Block(ExprBlock {
                     attrs,
                     label,
                     block,
                 }),
                 semi,
-            )
+            ))
         })
         .collect()
 }
@@ -527,7 +574,10 @@ pub fn variadic(_: TokenStream, item: TokenStream) -> TokenStream {
         .make_where_clause()
         .predicates
         .push(variadic_bound);
-    input.block.stmts = variadic_expand(input.block.stmts, &parameter, &local_traits);
+    input.block.stmts = match variadic_expand(input.block.stmts, &parameter, &local_traits) {
+        Ok(v) => v,
+        Err(e) => return e.into_compile_error().into(),
+    };
 
     let parameter_ident = &parameter.parameter_ident;
     let parameter_generic_ident = &parameter.generic_parameter.ident;
