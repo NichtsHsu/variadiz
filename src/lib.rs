@@ -104,8 +104,6 @@
 //! a mutable reference to each variadic parameter, allowing you to expand the variadic parameter pack
 //! multiple times.
 //!
-//! The expanded block is not allowed to evaluate any value,
-//!
 //! It should be noted that the expansion block behaves like a function body rather than a closure body -
 //! it cannot capture variables from the context automatically.
 //!
