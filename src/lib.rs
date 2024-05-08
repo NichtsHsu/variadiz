@@ -172,7 +172,7 @@
 //! #[variadic]
 //! fn collect<T, U>(mut collector: Vec<T>, others: Option<U>) -> Vec<T>
 //! where
-//!     U: Into<T>, // `U` can be bounded by `T`, but not vice versa.
+//!     U: Into<T>, // `U` can be bound by `T`, but not vice versa.
 //! {
 //!     // `collector` is actually `&mut Vec<T>`
 //!     #[va_expand(mut collector: Vec<T>)]
