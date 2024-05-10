@@ -214,7 +214,6 @@
 //!     T: std::fmt::Debug,
 //! {
 //!     let _result = (0..10)
-//!         .into_iter()
 //!         .map(|i| {
 //!             if i % 2 == 0 {
 //!                 #[va_expand_ref(mut counter: usize)]
