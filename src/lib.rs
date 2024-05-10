@@ -199,6 +199,64 @@
 //! ["hello", "world", "e"]
 //! ```
 //!
+//! You can use an expanded block almost anywhere expressions can be used,
+//! and it always evaluates to a `()`.
+//! However, there are two places where you cannot use a expanded block:
+//! in another expanded block, or in a macro.
+//! For examples:
+//!
+//! ```
+//! use variadiz::*;
+//!
+//! #[variadic]
+//! fn print<T>(mut counter: usize, others: Option<T>)
+//! where
+//!     T: std::fmt::Debug,
+//! {
+//!     let _result = (0..10)
+//!         .into_iter()
+//!         .map(|i| {
+//!             if i % 2 == 0 {
+//!                 #[va_expand_ref(mut counter: usize)]
+//!                 {
+//!                     println!("{counter}: {:?}", others);
+//!                     *counter += 1;
+//!                 }
+//!                 counter
+//!             } else {
+//!                 #[va_expand_ref(mut counter: usize)]
+//!                 {
+//!                     println!("{counter}: {:?}", others);
+//!                     *counter -= 1;
+//!                 }
+//!                 10 - counter
+//!             }
+//!         })
+//!         .collect::<Vec<_>>();
+//!
+//!     // Expanded block in an expanded block is not allowed.
+//!     // #[va_expand_ref(mut counter: usize)]
+//!     // {
+//!     //     #[va_expand_ref(mut counter: usize)]
+//!     //     {
+//!     //         println!("{counter}: {:?}", others);
+//!     //         *counter += 1;
+//!     //     }
+//!     // }
+//!
+//!     // Expanded block in a macro is not allowed.
+//!     // call_macro! {
+//!     //     #[va_expand_ref(mut counter: usize)]
+//!     //     {
+//!     //         println!("{counter}: {:?}", others);
+//!     //         *counter += 1;
+//!     //     }
+//!     //};
+//! }
+//!
+//! print(0, va_args!(Some("hello"), Some(vec![1, 2, 3]), Some('e')));
+//! ```
+//!
 //! Except for the captured variables, all generic types, and the identifier of the variadic parameter pack,
 //! the expanded block cannot interact with the outer code block.
 //!
