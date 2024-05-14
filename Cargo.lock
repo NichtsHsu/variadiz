@@ -96,9 +96,9 @@ dependencies = [
 
 [[package]]
 name = "syn"
-version = "2.0.61"
+version = "2.0.63"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c993ed8ccba56ae856363b1845da7266a7cb78e1d146c8a32d54b45a8b831fc9"
+checksum = "bf5be731623ca1a1fb7d8be6f261a3be6d3e2337b8a1f97be944d020c8fcb704"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -107,9 +107,9 @@ dependencies = [
 
 [[package]]
 name = "tuplez"
-version = "0.9.2"
+version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0e3850e7269b6a637eeaa96bf4f9d716f872bbd36381879e0435be1e02964cdd"
+checksum = "fd8011578e3d656ea393c69048c57648eca9a3b8bc0e23a1bf8051bcd95f797a"
 dependencies = [
  "paste",
  "tuplez-macros",
@@ -117,9 +117,9 @@ dependencies = [
 
 [[package]]
 name = "tuplez-macros"
-version = "0.5.2"
+version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f87132581eb0b422254492f6e3ac8a0e1abc9566154bee60944309fba1106120"
+checksum = "854c4273d8abcb93c594b9f85f28c7943973537be389d6ed878f819783ac11b6"
 dependencies = [
  "quote",
  "syn",
