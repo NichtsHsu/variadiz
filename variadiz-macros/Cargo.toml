@@ -18,7 +18,7 @@ categories = [
 proc-macro = true
 
 [dependencies]
-syn = { version = "2.0", features = ["full"] }
+syn = { version = "2.0", features = ["full", "visit-mut"] }
 quote = "1.0"
 nanoid = "0.4"
 proc-macro2 = "1.0"
