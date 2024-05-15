@@ -564,6 +564,7 @@ pub fn variadic(_: TokenStream, item: TokenStream) -> TokenStream {
     };
     let (local_traits, variadic_bound) = LocalTraits::new(&input, &parameter);
 
+    input.attrs.push(parse_quote!(#[allow(private_bounds)]));
     input
         .sig
         .generics
