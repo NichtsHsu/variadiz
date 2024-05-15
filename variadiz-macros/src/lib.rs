@@ -1,11 +1,13 @@
+use std::collections::HashMap;
+
 use nanoid::nanoid;
 use proc_macro::TokenStream;
 use proc_macro2::{Span, TokenStream as TokenStream2, TokenTree as TokenTree2};
 use quote::{quote, quote_spanned, ToTokens};
 use syn::{
-    parse_macro_input, parse_quote, punctuated::Pair, spanned::Spanned, visit_mut::VisitMut, Expr,
-    ExprBlock, FnArg, GenericParam, Generics, Ident, ItemFn, ItemStruct, Meta, Pat, PatType,
-    Signature, Stmt, Token, Type, TypeParam, WhereClause, WherePredicate,
+    parse_macro_input, parse_quote, punctuated::Pair, spanned::Spanned, visit_mut::VisitMut,
+    Attribute, Expr, ExprBlock, FnArg, GenericParam, Generics, Ident, ItemFn, ItemStruct, Meta,
+    Pat, PatType, Signature, Stmt, Token, Type, TypeParam, WhereClause, WherePredicate,
 };
 
 const ALPHABETS: [char; 62] = [
@@ -14,14 +16,6 @@ const ALPHABETS: [char; 62] = [
     'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', '0', '1', '2', '3', '4',
     '5', '6', '7', '8', '9',
 ];
-
-fn is_variadic_related(input: TokenStream2, searched: &Ident) -> bool {
-    input.into_iter().any(|tt| match tt {
-        TokenTree2::Ident(i) => &i == searched,
-        TokenTree2::Group(g) => is_variadic_related(g.stream(), searched),
-        _ => false,
-    })
-}
 
 struct VariadicParameter {
     generic_parameter: TypeParam,
@@ -47,8 +41,55 @@ struct VariadicExpander<'a> {
     local_traits: &'a LocalTraits,
 }
 
+struct CaptureVariableBind {
+    variable: Ident,
+    value: Expr,
+}
+
+struct CaptureVariableBindList(Vec<CaptureVariableBind>);
+
+impl syn::parse::Parse for CaptureVariableBind {
+    fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
+        let variable = input.parse()?;
+        let _: Token![=] = input.parse()?;
+        let value = input.parse()?;
+        Ok(Self { variable, value })
+    }
+}
+
+impl syn::parse::Parse for CaptureVariableBindList {
+    fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
+        let mut list = vec![];
+        while !input.is_empty() {
+            list.push(input.parse()?);
+            if !input.is_empty() {
+                let _: Token![,] = input.parse()?;
+            }
+        }
+        Ok(Self(list))
+    }
+}
+
 impl VariadicExpander<'_> {
     fn visit_expr_block_mut_inner(&mut self, i: &mut syn::ExprBlock) -> syn::Result<()> {
+        fn search_va_bind(attrs: &[Attribute]) -> syn::Result<HashMap<String, Expr>> {
+            let mut map = HashMap::new();
+            attrs
+                .iter()
+                .filter(|attr| attr.meta.path().is_ident("va_bind"))
+                .try_for_each(|expr| -> syn::Result<()> {
+                    let Meta::List(meta_list) = &expr.meta else {
+                        return Ok(());
+                    };
+                    let CaptureVariableBindList(bind_list) = syn::parse2(meta_list.tokens.clone())?;
+                    for CaptureVariableBind { variable, value } in bind_list {
+                        map.insert(variable.to_string(), value);
+                    }
+                    Ok(())
+                })?;
+            Ok(map)
+        }
+
         let ExprBlock {
             attrs,
             label,
@@ -69,6 +110,7 @@ impl VariadicExpander<'_> {
                 "label of expanded block is not available to use",
             ));
         }
+        let mut variable_bind_map = search_va_bind(attrs)?;
         let local_struct_name = proc_macro2::Ident::new(
             &format!("__MapperImpl{}", nanoid!(16, &ALPHABETS)),
             proc_macro2::Span::call_site(),
@@ -135,13 +177,24 @@ impl VariadicExpander<'_> {
                 .collect::<Vec<TokenStream2>>();
             let fields_init = variable_list
                 .iter()
-                .map(|(mutability, ident, _)| {
-                    if *mutability {
-                        quote!(#ident: &mut #ident)
-                    } else {
-                        quote!(#ident: &#ident)
-                    }
-                })
+                .map(
+                    |(mutability, ident, _)| match variable_bind_map.remove(&ident.to_string()) {
+                        Some(expr) => {
+                            if *mutability {
+                                quote!(#ident: &mut (#expr))
+                            } else {
+                                quote!(#ident: & (#expr))
+                            }
+                        }
+                        None => {
+                            if *mutability {
+                                quote!(#ident: &mut #ident)
+                            } else {
+                                quote!(#ident: &#ident)
+                            }
+                        }
+                    },
+                )
                 .collect::<Vec<TokenStream2>>();
             let unpack_stmts = variable_list
                 .iter()
@@ -246,6 +299,14 @@ impl VisitMut for VariadicExpander<'_> {
 
 impl VariadicParameter {
     fn new(item_fn: &ItemFn) -> syn::Result<Self> {
+        fn is_variadic_related(input: TokenStream2, searched: &Ident) -> bool {
+            input.into_iter().any(|tt| match tt {
+                TokenTree2::Ident(i) => &i == searched,
+                TokenTree2::Group(g) => is_variadic_related(g.stream(), searched),
+                _ => false,
+            })
+        }
+
         if item_fn.sig.inputs.is_empty() {
             return Err(syn::Error::new(
                 item_fn.sig.inputs.span(),

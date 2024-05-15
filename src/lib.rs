@@ -266,6 +266,89 @@
 //! A statement `return` in an expanded block will only exit the expanded block itself (similar to `continue`
 //! in a `loop` block) rather than exiting the outer function.
 //!
+//! ## Bind captured variables
+//!
+//! You can use the `#[va_bind]` attribute to bind a captured variable to another value, for example:
+//!
+//! ```
+//! use variadiz::*;
+//!
+//! struct Person {
+//!     name: String,
+//!     age: u32,
+//! }
+//!
+//! #[variadic]
+//! fn print<T>(mut person: Person, interests: T)
+//! where
+//!     T: std::fmt::Debug,
+//! {
+//!     #[va_expand_ref(who: String, mut age: u32)]
+//!     #[va_bind(who = person.name, age = person.age)]
+//!     {
+//!         println!("{who} is {age} years old");
+//!         println!("And they is interested in {interests:?}");
+//!         println!("then a year passed...");
+//!         *age += 1;
+//!     }
+//!
+//!     /// Although you cannot split the `va_expand` attribute,
+//!     /// but you can split the `va_bind` attribute.
+//!     /// The following code is totally equivalent:
+//!     #[va_expand_ref(who: String, mut age: u32)]
+//!     #[va_bind(who = person.name)]
+//!     #[va_bind(age = person.age)]
+//!     {
+//!         println!("{who} is {age} years old");
+//!         println!("And they is interested in {interests:?}");
+//!         println!("then a year passed...");
+//!         *age += 1;
+//!     }
+//! }
+//!
+//! let person = Person {
+//!     name: "John".to_string(),
+//!     age: 18,
+//! };
+//! print(person, va_args!("math", (), 114514));
+//! ```
+//!
+//! **NOTE**: Binding a value to a captured variable does **NOT** move it.
+//!
+//! However, you need to be careful about traps in the case of binding variables
+//! to r-values (called value expressions in Rust):
+//!
+//! ```
+//! use variadiz::*;
+//!
+//! #[variadic]
+//! fn count<T>(_others: T) {
+//!     let mut counter = 0;
+//!
+//!     // Bind to l-value (called place expression in Rust).
+//!     #[va_expand_ref(mut counter: usize)]
+//!     #[va_bind(counter = counter)] // Default behavior.
+//!     {
+//!         *counter += 1;
+//!     }
+//!     // `counter` is updated.
+//!     assert_eq!(counter, 4);
+//!
+//!     counter = 0;
+//!
+//!     // Bind to r-value (called value expression in Rust).
+//!     #[va_expand_ref(mut counter: usize)]
+//!     #[va_bind(counter = counter + 1 - 1)]
+//!     {
+//!         *counter += 1;
+//!     }
+//!     // `counter` is NOT updated!
+//!     assert_eq!(counter, 0);
+//! }
+//!
+//! count(va_args!(1, "2", 3.0, [4]));
+//! ```
+//!
 //! # Call variadic function
 //!
 //! It is easy to see from the above example that you should pack all variadic arguments into [`va_args!`] macro
