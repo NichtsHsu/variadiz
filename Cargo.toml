@@ -12,7 +12,7 @@ keywords = ["variadic", "variadic-function", "parameter-pack"]
 
 [package]
 name = "variadiz"
-version = "1.1.1"
+version = "1.1.2"
 description = "Variadic function support for rust"
 authors.workspace = true
 license.workspace = true
@@ -24,5 +24,5 @@ keywords.workspace = true
 categories = ["rust-patterns"]
 
 [dependencies]
-variadiz-macros = { version = "1.1.0", path = "variadiz-macros" }
+variadiz-macros = { version = "1.1.1", path = "variadiz-macros" }
 tuplez = ">=0.8.0"
