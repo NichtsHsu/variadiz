@@ -1,7 +1,7 @@
 use nanoid::nanoid;
 use proc_macro::TokenStream;
 use proc_macro2::{Span, TokenStream as TokenStream2, TokenTree as TokenTree2};
-use quote::{quote, ToTokens};
+use quote::{quote, quote_spanned, ToTokens};
 use syn::{
     parse_macro_input, parse_quote, punctuated::Pair, spanned::Spanned, visit_mut::VisitMut, Expr,
     ExprBlock, FnArg, GenericParam, Generics, Ident, ItemFn, ItemStruct, Meta, Pat, PatType,
@@ -47,11 +47,8 @@ struct VariadicExpander<'a> {
     local_traits: &'a LocalTraits,
 }
 
-impl VisitMut for VariadicExpander<'_> {
-    fn visit_expr_block_mut(&mut self, i: &mut syn::ExprBlock) {
-        if self.err.is_some() {
-            return;
-        }
+impl VariadicExpander<'_> {
+    fn visit_expr_block_mut_inner(&mut self, i: &mut syn::ExprBlock) -> syn::Result<()> {
         let ExprBlock {
             attrs,
             label,
@@ -63,7 +60,8 @@ impl VisitMut for VariadicExpander<'_> {
                 || attr.meta.path().is_ident("va_expand_mut")
         });
         let Some(expand_attr) = expand_attr else {
-            return syn::visit_mut::visit_expr_block_mut(self, i);
+            syn::visit_mut::visit_expr_block_mut(self, i);
+            return Ok(());
         };
         _ = label.take();
 
@@ -78,7 +76,8 @@ impl VisitMut for VariadicExpander<'_> {
         let instantiation: Expr;
         if let Meta::List(list) = &expand_attr.meta {
             let tokens = &list.tokens;
-            let parse_as_signature: Signature = parse_quote!(fn __capture(#tokens));
+            let parse_as_signature: Signature =
+                syn::parse2(quote_spanned!(tokens.span() => fn __capture(#tokens)))?;
             let variable_list = parse_as_signature.inputs;
             let variable_list = variable_list
                 .iter()
@@ -92,9 +91,15 @@ impl VisitMut for VariadicExpander<'_> {
                         let Pat::Ident(ident) = &*arg.pat else {
                             return Err(syn::Error::new(
                                 arg.pat.span(),
-                                "variable captures does not support patterns",
+                                "variable captures do not support patterns",
                             ));
                         };
+                        if ident.by_ref.is_some() {
+                            return Err(syn::Error::new(
+                                ident.by_ref.span(),
+                                "variables are always captured by `ref`",
+                            ));
+                        }
                         Ok((
                             ident.mutability.is_some(),
                             ident.ident.clone(),
@@ -102,11 +107,7 @@ impl VisitMut for VariadicExpander<'_> {
                         ))
                     }
                 })
-                .collect::<syn::Result<Vec<(bool, Ident, Type)>>>();
-            let Ok(variable_list) = variable_list else {
-                self.err = variable_list.err();
-                return;
-            };
+                .collect::<syn::Result<Vec<(bool, Ident, Type)>>>()?;
             let original_types_list = variable_list
                 .iter()
                 .map(|(mutability, _, ty)| {
@@ -226,6 +227,16 @@ impl VisitMut for VariadicExpander<'_> {
             )
         }};
         attrs.clear();
+        Ok(())
+    }
+}
+
+impl VisitMut for VariadicExpander<'_> {
+    fn visit_expr_block_mut(&mut self, i: &mut syn::ExprBlock) {
+        if self.err.is_some() {
+            return;
+        }
+        self.err = self.visit_expr_block_mut_inner(i).err();
     }
 }
 
