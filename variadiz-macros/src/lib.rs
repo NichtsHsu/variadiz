@@ -63,8 +63,12 @@ impl VariadicExpander<'_> {
             syn::visit_mut::visit_expr_block_mut(self, i);
             return Ok(());
         };
-        _ = label.take();
-
+        if label.is_some() {
+            return Err(syn::Error::new(
+                label.span(),
+                "label of expanded block is not available to use",
+            ));
+        }
         let local_struct_name = proc_macro2::Ident::new(
             &format!("__MapperImpl{}", nanoid!(16, &ALPHABETS)),
             proc_macro2::Span::call_site(),
