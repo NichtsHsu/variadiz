@@ -252,15 +252,16 @@ impl VariadicParameter {
                 "requires at least one parameter that is not a receiver",
             ));
         }
-        let FnArg::Typed(parameter_pat_type) = item_fn.sig.inputs.last().cloned().unwrap() else {
+        let last_parameter = item_fn.sig.inputs.last().cloned().unwrap();
+        let FnArg::Typed(parameter_pat_type) = last_parameter else {
             return Err(syn::Error::new(
-                item_fn.sig.inputs.span(),
+                last_parameter.span(),
                 "requires at least one parameter that is not a receiver",
             ));
         };
         let Pat::Ident(ident) = &*parameter_pat_type.pat else {
             return Err(syn::Error::new(
-                item_fn.sig.inputs.span(),
+                parameter_pat_type.span(),
                 "does not support pattern on variadic parameter",
             ));
         };
