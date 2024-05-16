@@ -141,7 +141,7 @@ dependencies = [
 
 [[package]]
 name = "variadiz-macros"
-version = "1.2.0"
+version = "1.2.1"
 dependencies = [
  "nanoid",
  "proc-macro2",
