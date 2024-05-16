@@ -6,8 +6,8 @@ use proc_macro2::{Span, TokenStream as TokenStream2, TokenTree as TokenTree2};
 use quote::{quote, quote_spanned, ToTokens};
 use syn::{
     parse_macro_input, parse_quote, punctuated::Pair, spanned::Spanned, visit_mut::VisitMut,
-    Attribute, Expr, ExprBlock, FnArg, GenericParam, Generics, Ident, ItemFn, ItemStruct, Meta,
-    Pat, PatType, Signature, Stmt, Token, Type, TypeParam, WhereClause, WherePredicate,
+    Attribute, Expr, ExprBlock, FnArg, GenericParam, Generics, Ident, Item, ItemFn, ItemStruct,
+    Meta, Pat, PatType, Signature, Stmt, Token, Type, TypeParam, WhereClause, WherePredicate,
 };
 
 const ALPHABETS: [char; 62] = [
@@ -295,6 +295,9 @@ impl VisitMut for VariadicExpander<'_> {
         }
         self.err = self.visit_expr_block_mut_inner(i).err();
     }
+
+    // Skip all item
+    fn visit_item_mut(&mut self, _: &mut Item) {}
 }
 
 impl VariadicParameter {
