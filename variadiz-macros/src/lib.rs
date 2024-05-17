@@ -182,7 +182,7 @@ impl LocalTraits {
 
         let mapper = Ident::new(
             &format!("__Mapper{}", nanoid!(16, &ALPHABETS)),
-            Span::call_site(),
+            Span::mixed_site(),
         );
         let mapper_fully_qualified = if parameter.not_variadic_generics.params.is_empty() {
             quote!(#mapper)
@@ -191,7 +191,7 @@ impl LocalTraits {
         };
         let mapper_ref = Ident::new(
             &format!("__MapperRef{}", nanoid!(16, &ALPHABETS)),
-            Span::call_site(),
+            Span::mixed_site(),
         );
         let mapper_ref_fully_qualified = if parameter.not_variadic_generics.params.is_empty() {
             quote!(#mapper_ref)
@@ -200,7 +200,7 @@ impl LocalTraits {
         };
         let mapper_mut = Ident::new(
             &format!("__MapperMut{}", nanoid!(16, &ALPHABETS)),
-            Span::call_site(),
+            Span::mixed_site(),
         );
         let mapper_mut_fully_qualified = if parameter.not_variadic_generics.params.is_empty() {
             quote!(#mapper_mut)
@@ -210,7 +210,7 @@ impl LocalTraits {
 
         let foreach = Ident::new(
             &format!("__Foreach{}", nanoid!(16, &ALPHABETS)),
-            Span::call_site(),
+            Span::mixed_site(),
         );
         let foreach_fully_qualified = if parameter.not_variadic_generics.params.is_empty() {
             quote!(#foreach)
@@ -219,13 +219,13 @@ impl LocalTraits {
         };
         let generic_f = Ident::new(
             &format!("__F{}", nanoid!(16, &ALPHABETS)),
-            Span::call_site(),
+            Span::mixed_site(),
         );
 
         let mut tuple_generics = parameter.all_generics.clone();
         let generic_others = Ident::new(
             &format!("__Others{}", nanoid!(16, &ALPHABETS)),
-            Span::call_site(),
+            Span::mixed_site(),
         );
         tuple_generics.params.push(parse_quote!(#generic_others));
         tuple_generics
@@ -472,7 +472,7 @@ impl VariadicExpander<'_> {
         let mut variable_bind_map = search_va_bind(attrs)?;
         let local_struct_name = proc_macro2::Ident::new(
             &format!("__MapperImpl{}", nanoid!(16, &ALPHABETS)),
-            proc_macro2::Span::call_site(),
+            proc_macro2::Span::mixed_site(),
         );
 
         let struct_decl: ItemStruct;
@@ -598,21 +598,21 @@ impl VariadicExpander<'_> {
         let impl_foreach_method;
         if expand_attr.meta.path().is_ident("va_expand") {
             impl_mapper_name = &self.local_traits.mapper;
-            impl_mapper_method = Ident::new("map", Span::call_site());
+            impl_mapper_method = Ident::new("map", Span::mixed_site());
             impl_mapper_method_pat_type = &self.parameter.parameter_pat_type;
-            impl_foreach_method = Ident::new("foreach", Span::call_site());
+            impl_foreach_method = Ident::new("foreach", Span::mixed_site());
             variadic_parameter_expr = parse_quote!(#variadic_parameter_ident);
         } else if expand_attr.meta.path().is_ident("va_expand_ref") {
             impl_mapper_name = &self.local_traits.mapper_ref;
-            impl_mapper_method = Ident::new("map_ref", Span::call_site());
+            impl_mapper_method = Ident::new("map_ref", Span::mixed_site());
             impl_mapper_method_pat_type = &self.parameter.parameter_ref_pat_type;
-            impl_foreach_method = Ident::new("foreach_ref", Span::call_site());
+            impl_foreach_method = Ident::new("foreach_ref", Span::mixed_site());
             variadic_parameter_expr = parse_quote!(&#variadic_parameter_ident);
         } else if expand_attr.meta.path().is_ident("va_expand_mut") {
             impl_mapper_name = &self.local_traits.mapper_mut;
-            impl_mapper_method = Ident::new("map_mut", Span::call_site());
+            impl_mapper_method = Ident::new("map_mut", Span::mixed_site());
             impl_mapper_method_pat_type = &self.parameter.parameter_mut_pat_type;
-            impl_foreach_method = Ident::new("foreach_mut", Span::call_site());
+            impl_foreach_method = Ident::new("foreach_mut", Span::mixed_site());
             variadic_parameter_expr = parse_quote!(&mut #variadic_parameter_ident);
         } else {
             unreachable!()
