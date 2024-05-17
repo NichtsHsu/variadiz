@@ -51,6 +51,72 @@
 //! [20240429] 5: None
 //! ```
 //!
+//! As methods:
+//!
+//! ```
+//! use std::fmt::Debug;
+//! use variadiz::*;
+//!
+//! struct Person<'a, T>
+//! where
+//!     T: Debug,
+//! {
+//!     name: &'a str,
+//!     age: u32,
+//!     tags: Vec<T>,
+//! }
+//!
+//! #[variadic_impl]
+//! impl<'a, T> Person<'a, T>
+//! where
+//!     T: Debug,
+//! {
+//!     // Non-variadic method
+//!     fn hello(&self) -> &'static str {
+//!         "hello"
+//!     }
+//!
+//!     #[variadic]
+//!     fn grow_up<U>(&mut self, others: U)
+//!     where
+//!         U: std::fmt::Debug,
+//!     {
+//!         #[va_expand(hello: &str, who: &str, mut age: u32, tags: Vec<T>)]
+//!         #[va_bind(hello = self.hello())]
+//!         #[va_bind(who = self.name)]
+//!         #[va_bind(age = self.age)]
+//!         #[va_bind(tags = self.tags)]
+//!         {
+//!             println!("{hello}, {who} is {age} years old,");
+//!             println!("\tthey is {tags:?},");
+//!             println!("\tand do not forget {others:?}");
+//!             *self.age += 1;
+//!         }
+//!     }
+//! }
+//!
+//! let mut person = Person {
+//!     name: "John",
+//!     age: 16,
+//!     tags: vec!["smart", "awesome"],
+//! };
+//! person.grow_up(va_args!("hell", Some(62), 0.96));
+//! ```
+//!
+//! Outputs:
+//!
+//! ```text
+//! hello, John is 16 years old,
+//!         they is ["smart", "awesome"],
+//!         and do not forget "hell"
+//! hello, John is 17 years old,
+//!         they is ["smart", "awesome"],
+//!         and do not forget Some(62)
+//! hello, John is 18 years old,
+//!         they is ["smart", "awesome"],
+//!         and do not forget 0.96
+//! ```
+//!
 //! # Details
 //!
 //! ## The [`#[variadic]`](crate::variadic) attribute
@@ -125,7 +191,7 @@
 //! So when you declare to capture `x`, the `&x` is actually captured.
 //! You can add a `mut` before the captured variable to indicate capturing its mutable reference.
 //!
-//! Let's go back to the original example:
+//! For example:
 //!
 //! ```
 //! use variadiz::*;
@@ -349,7 +415,7 @@
 //! count(va_args!(1, "2", 3.0, [4]));
 //! ```
 //!
-//! # Call variadic function
+//! ## Call variadic function
 //!
 //! It is easy to see from the above example that you should pack all variadic arguments into [`va_args!`] macro
 //! and pass them as a single argument.
@@ -386,6 +452,79 @@
 //!     va_args!(Some("hello"), Some(vec![1, 2, 3]), Some('e'));
 //! print(0, 20240429, args);
 //! ```
+//!
+//! ## Variadic methods support
+//!
+//! Due to some implementation details, [`#[variadic]`](variadic) has to define some
+//! `trait` item outside the variadic function. It conflicts with `impl` item --
+//! we cannot define `trait` item in a `impl` item.
+//!
+//! To solve this problem, you are required to add the [`#[variadic_impl]`](variadic_impl)
+//! attribute on the `impl` item to assist moving these `trait` items out.
+//!
+//! For example:
+//!
+//! ```
+//! use std::fmt::Debug;
+//! use variadiz::*;
+//!
+//! struct Person<'a, T>
+//! where
+//!     T: Debug,
+//! {
+//!     name: &'a str,
+//!     age: u32,
+//!     tags: Vec<T>,
+//! }
+//!
+//! #[variadic_impl]
+//! impl<'a, T> Person<'a, T>
+//! where
+//!     T: Debug,
+//! {
+//!     // Non-variadic method
+//!     fn hello(&self) -> &'static str {
+//!         "hello"
+//!     }
+//!
+//!     #[variadic]
+//!     fn grow_up<U>(&mut self, others: U)
+//!     where
+//!         U: std::fmt::Debug,
+//!     {
+//!         #[va_expand(hello: &str, who: &str, mut age: u32, tags: Vec<T>)]
+//!         #[va_bind(hello = self.hello())]
+//!         #[va_bind(who = self.name)]
+//!         #[va_bind(age = self.age)]
+//!         #[va_bind(tags = self.tags)]
+//!         {
+//!             println!("{hello}, {who} is {age} years old,");
+//!             println!("\tthey is {tags:?},");
+//!             println!("\tand do not forget {others:?}");
+//!             *self.age += 1;
+//!         }
+//!     }
+//! }
+//!
+//! let mut person = Person {
+//!     name: "John",
+//!     age: 16,
+//!     tags: vec!["smart", "awesome"],
+//! };
+//! person.grow_up(va_args!("hell", Some(514), 0.96));
+//! ```
+//!
+//! **NOTE**: The `#[variadic]` attribute in the [`#[variadic_impl]`](variadic_impl) item is
+//! not really the attribute macro: it is handled directly and will be removed by
+//! [`#[variadic_impl]`](variadic_impl).
+//! Retaining its name as `#[variadic]` is an ergonomic consideration.
+//! This means **it is not affected by Rust's symbol resolution**.
+//!
+//! ## Variadic trait methods support?
+//!
+//! To support variadic methods in traits, it requires sharing private bounds between the trait
+//! definition and each implementations.
+//! There is current no good design for this purpose.
 
 /// Create a variadic argument pack.
 ///
@@ -426,5 +565,10 @@ pub use tuplez::tuple_t as va_types;
 ///
 /// Please check the [documentation home page](crate) for details.
 pub use variadiz_macros::variadic;
+
+/// Indicates that there are variadic methods in the `impl` item.
+///
+/// Please check the [variadic methods support section](crate#variadic-methods-support) for details.
+pub use variadiz_macros::variadic_impl;
 
 extern crate self as variadiz;
