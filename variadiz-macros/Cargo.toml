@@ -1,6 +1,6 @@
 [package]
 name = "variadiz-macros"
-version = "1.2.1"
+version = "1.3.0"
 description = "Procedural macros implementation of variadiz"
 authors.workspace = true
 license.workspace = true
