@@ -1,3 +1,5 @@
+#![no_std]
+
 //! Variadic function support for Rust.
 //!
 //! # Install

@@ -107,9 +107,9 @@ dependencies = [
 
 [[package]]
 name = "tuplez"
-version = "0.14.0"
+version = "0.14.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fd8011578e3d656ea393c69048c57648eca9a3b8bc0e23a1bf8051bcd95f797a"
+checksum = "7de19247d4b5e9950335eff7ab9c948b96f349e23004df21a0c81726c5e856c0"
 dependencies = [
  "paste",
  "tuplez-macros",
@@ -117,10 +117,11 @@ dependencies = [
 
 [[package]]
 name = "tuplez-macros"
-version = "0.6.0"
+version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "854c4273d8abcb93c594b9f85f28c7943973537be389d6ed878f819783ac11b6"
+checksum = "7d680b2553893175ade7356efd8b4faffd0c21d845a12bb603557108c8f9db31"
 dependencies = [
+ "proc-macro2",
  "quote",
  "syn",
 ]
@@ -133,7 +134,7 @@ checksum = "3354b9ac3fae1ff6755cb6db53683adb661634f67557942dea4facebec0fee4b"
 
 [[package]]
 name = "variadiz"
-version = "1.3.0"
+version = "1.3.1"
 dependencies = [
  "tuplez",
  "variadiz-macros",
