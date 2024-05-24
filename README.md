@@ -90,7 +90,7 @@ where
         #[va_bind(tags = self.tags)]
         {
             println!("{hello}, {who} is {age} years old,");
-            println!("\tthey is {tags:?},");
+            println!("\tthey are {tags:?},");
             println!("\tand do not forget {others:?}");
             *self.age += 1;
         }
@@ -109,13 +109,13 @@ Outputs:
 
 ```text
 hello, John is 16 years old,
-        they is ["smart", "awesome"],
+        they are ["smart", "awesome"],
         and do not forget "hell"
 hello, John is 17 years old,
-        they is ["smart", "awesome"],
+        they are ["smart", "awesome"],
         and do not forget Some(62)
 hello, John is 18 years old,
-        they is ["smart", "awesome"],
+        they are ["smart", "awesome"],
         and do not forget 0.96
 ```
 

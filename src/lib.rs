@@ -90,7 +90,7 @@
 //!         #[va_bind(tags = self.tags)]
 //!         {
 //!             println!("{hello}, {who} is {age} years old,");
-//!             println!("\tthey is {tags:?},");
+//!             println!("\tthey are {tags:?},");
 //!             println!("\tand do not forget {others:?}");
 //!             *self.age += 1;
 //!         }
@@ -109,13 +109,13 @@
 //!
 //! ```text
 //! hello, John is 16 years old,
-//!         they is ["smart", "awesome"],
+//!         they are ["smart", "awesome"],
 //!         and do not forget "hell"
 //! hello, John is 17 years old,
-//!         they is ["smart", "awesome"],
+//!         they are ["smart", "awesome"],
 //!         and do not forget Some(62)
 //! hello, John is 18 years old,
-//!         they is ["smart", "awesome"],
+//!         they are ["smart", "awesome"],
 //!         and do not forget 0.96
 //! ```
 //!
@@ -355,7 +355,7 @@
 //!     #[va_bind(who = person.name, age = person.age)]
 //!     {
 //!         println!("{who} is {age} years old");
-//!         println!("And they is interested in {interests:?}");
+//!         println!("And they are interested in {interests:?}");
 //!         println!("then a year passed...");
 //!         *age += 1;
 //!     }
@@ -368,7 +368,7 @@
 //!     #[va_bind(age = person.age)]
 //!     {
 //!         println!("{who} is {age} years old");
-//!         println!("And they is interested in {interests:?}");
+//!         println!("And they are interested in {interests:?}");
 //!         println!("then a year passed...");
 //!         *age += 1;
 //!     }
@@ -501,7 +501,7 @@
 //!         #[va_bind(tags = self.tags)]
 //!         {
 //!             println!("{hello}, {who} is {age} years old,");
-//!             println!("\tthey is {tags:?},");
+//!             println!("\tthey are {tags:?},");
 //!             println!("\tand do not forget {others:?}");
 //!             *self.age += 1;
 //!         }
