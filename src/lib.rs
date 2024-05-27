@@ -1,11 +1,12 @@
 #![no_std]
+#![deny(missing_docs)]
 
 //! Variadic function support for Rust.
 //!
 //! # Install
 //!
 //! ```console
-//! cargo add tuplez variadiz
+//! cargo add variadiz
 //! ```
 //!
 //! # Example
@@ -527,6 +528,9 @@
 //! To support variadic methods in traits, it requires sharing private bounds between the trait
 //! definition and each implementations.
 //! There is current no good design for this purpose.
+
+#[doc(hidden)]
+pub use tuplez as __tuplez;
 
 /// Create a variadic argument pack.
 ///

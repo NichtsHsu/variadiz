@@ -280,7 +280,7 @@ impl LocalTraits {
             }
 
             #[doc(hidden)]
-            trait #foreach #not_variadic_impl_generics: ::tuplez::TupleLike
+            trait #foreach #not_variadic_impl_generics: ::variadiz::__tuplez::TupleLike
             #not_variadic_where_clause
             {
                 #[doc(hidden)]
@@ -307,7 +307,7 @@ impl LocalTraits {
 
             impl #not_variadic_impl_generics
             #foreach #not_variadic_type_generics
-            for ::tuplez::Unit
+            for ::variadiz::__tuplez::Unit
             #not_variadic_where_clause
             {
                 #[doc(hidden)]
@@ -340,7 +340,7 @@ impl LocalTraits {
 
             impl #tuple_impl_generics
             #foreach #not_variadic_type_generics
-            for ::tuplez::Tuple<#variadic_parameter_type, #generic_others>
+            for ::variadiz::__tuplez::Tuple<#variadic_parameter_type, #generic_others>
             #tuple_where_clause
             {
                 #[doc(hidden)]
